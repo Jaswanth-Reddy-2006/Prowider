@@ -33,9 +33,7 @@ export default function LandingPage() {
               <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Live Feed</Button>
             </Link>
             <Link href="/test-tools">
-              <Button variant="outline" size="sm" className="border-brand-accent/30 text-brand-accent hover:bg-brand-accent/10">
-                Test Console
-              </Button>
+              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Test Console</Button>
             </Link>
           </div>
         </div>
