@@ -1,195 +1,278 @@
 'use client'
 
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Cpu, RefreshCw, Layers, ShieldCheck, Database } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Loader2, Wrench, RefreshCw, Zap, Server, Shield, TerminalSquare } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-async function generateSignature(bodyString: string, secret = 'test_secret') {
-  const enc = new TextEncoder()
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  const signature = await crypto.subtle.sign('HMAC', key, enc.encode(bodyString))
-  return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('')
-}
+export default function TestToolsPage() {
+  const [loading, setLoading] = useState(false)
+  const [logs, setLogs] = useState<{ time: string; msg: string; error?: boolean }[]>([])
 
-export default function TestConsolePage() {
-  const queryClient = useQueryClient()
-  const [txnLogs, setTxnLogs] = useState<any[]>([])
-
-  const { data: webhooksData, isLoading: webhooksLoading } = useQuery({
+  // Fetch webhook event log
+  const { data: webhookData, refetch: refetchWebhooks } = useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => {
       const res = await fetch('/api/webhooks')
       return res.json()
-    }
+    },
+    refetchOnWindowFocus: false,
   })
-  
-  const webhooks = webhooksData?.data || []
 
-  const logTxn = (msg: string, success: boolean = true) => {
-    setTxnLogs(prev => [{ id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), msg, success }, ...prev].slice(0, 50))
+  const appendLog = (msg: string, error = false) => {
+    setLogs(prev => [{ time: new Date().toLocaleTimeString(), msg, error }, ...prev].slice(0, 100))
   }
 
-  const stressTestMutation = useMutation({
-    mutationFn: async (count: number) => {
-      logTxn(`Dispatching ${count} simultaneous database transactions...`, true)
-      const res = await fetch('/api/test/generate-leads', {
+  const resetQuota = async () => {
+    setLoading(true)
+    try {
+      const eventId = `manual-reset-${Date.now()}`
+      appendLog(`Sending quota reset webhook [${eventId}]...`)
+      const res = await fetch('/api/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count, serviceId: 3 })
+        body: JSON.stringify({ eventId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      return data
-    },
-    onSuccess: (data) => {
-      logTxn(`Stress test completed: ${data.successCount} succeeded, ${data.failedCount} failed.`, true)
+      appendLog(`Webhook [${eventId}] → status: ${data.status}`)
+      refetchWebhooks()
+    } catch (e: any) {
+      appendLog(`Error resetting quota: ${e.message}`, true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const callWebhookRepeatedly = async () => {
+    setLoading(true)
+    try {
+      const eventId = `idempotency-test-${Date.now()}`
+      appendLog(`Testing idempotency with eventId: ${eventId}`)
+      for (let i = 1; i <= 3; i++) {
+        const res = await fetch('/api/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId }),
+        })
+        const data = await res.json()
+        appendLog(`Call ${i}/3: status = ${data.status} ${data.status === 'duplicate' ? '⚠️ (DUPLICATE IGNORED)' : '✓'}`)
+      }
+      refetchWebhooks()
+    } catch (e: any) {
+      appendLog(`Error: ${e.message}`, true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateLeads = async (count: number) => {
+    setLoading(true)
+    try {
+      appendLog(`Firing ${count} concurrent lead creations...`)
+      const startTime = performance.now()
+      const res = await fetch('/api/test-tools/lead-generator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count }),
+      })
+      const elapsed = Math.round(performance.now() - startTime)
+      const data = await res.json()
       if (data.results) {
-        data.results.forEach((r: any) => {
-          if (r.status === 'fulfilled') {
-            logTxn(`Lead #${r.value.data.id} allocated in ${r.value.data.durationMs}ms`, true)
+        let success = 0, failed = 0
+        data.results.forEach((r: any, i: number) => {
+          if (r.error) {
+            failed++
+            appendLog(`Lead ${i + 1}: FAILED — ${r.error}`, true)
           } else {
-            logTxn(`Failed transaction: ${r.reason}`, false)
+            success++
+            const provs = r.assignments?.map((a: any) => `${a.providerName || 'P' + a.providerId}(${a.assignmentType === 'MANDATORY' ? 'M' : 'FR'})`).join(', ')
+            appendLog(`Lead ${i + 1}: ID #${r.lead?.id} → [${provs}]`)
           }
         })
+        appendLog(`Batch complete: ${success} succeeded, ${failed} failed in ${elapsed}ms`)
+      } else if (data.error) {
+        appendLog(`Generator Error: ${data.error}`, true)
       }
-    },
-    onError: (err: any) => logTxn(`Stress test error: ${err.message}`, false)
-  })
+    } catch (e: any) {
+      appendLog(`Request failed: ${e.message}`, true)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const webhookMutation = useMutation({
-    mutationFn: async (isIdempotent: boolean) => {
-      const eventId = isIdempotent ? "fixed-idempotent-event-id-123" : `reset-${Date.now()}`
-      const body = JSON.stringify({ eventId })
-      const signature = await generateSignature(body)
-      
-      const res = await fetch('/api/webhooks/reset-quota', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-webhook-signature': signature },
-        body
+  const resetSystem = async () => {
+    if (!confirm('Are you sure you want to delete all leads and reset quotas? This action cannot be undone.')) return
+    setLoading(true)
+    try {
+      appendLog(`Initiating complete system reset...`)
+      const res = await fetch('/api/test-tools/reset-system', {
+        method: 'DELETE',
       })
       const data = await res.json()
-      return { data, isIdempotent }
-    },
-    onSuccess: ({ data, isIdempotent }) => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] })
-    },
-  })
+      if (data.success) {
+        appendLog(`SYSTEM RESET SUCCESS: ${data.message}`)
+      } else {
+        appendLog(`SYSTEM RESET FAILED: ${data.error}`, true)
+      }
+    } catch (e: any) {
+      appendLog(`Error resetting system: ${e.message}`, true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const webhookEvents = webhookData?.data || []
 
   return (
-    <div className="min-h-screen bg-background pt-24 px-6 pb-20">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-            <Cpu className="w-8 h-8 text-brand-accent" />
-            Database Testing Console
-          </h1>
-          <p className="text-neutral-400 mt-1">Directly invoke backend systems to verify concurrency, quotas, and idempotency.</p>
+    <div className="min-h-screen bg-background pt-24 px-6 pb-20 selection:bg-brand-accent selection:text-black">
+      <div className="max-w-6xl mx-auto space-y-8">
+
+        <div className="flex items-center justify-between bg-brand-accent/5 border border-brand-accent/20 p-6 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center border border-brand-accent/30">
+              <TerminalSquare className="w-6 h-6 text-brand-accent" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Advanced Testing Console</h1>
+              <p className="text-neutral-400 text-sm mt-1">Simulate real-world loads, webhooks, and concurrency conflicts safely.</p>
+            </div>
+          </div>
+          <Badge variant="outline" className="border-brand-accent/50 text-brand-accent">
+            Debug Environment Active
+          </Badge>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          
-          {/* Concurrency Testing */}
-          <Card className="glass-panel border-white/5 bg-black/40">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Layers className="w-5 h-5 text-purple-400" />
-                Concurrency & Lock Injector
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <p className="text-sm text-neutral-400">
-                Spawns simultaneous Node.js promises to force PostgreSQL row lock contention on the quotas table.
-              </p>
-              <div className="flex gap-4">
-                <Button 
-                  onClick={() => stressTestMutation.mutate(10)}
-                  disabled={stressTestMutation.isPending}
-                  className="flex-1 h-12 bg-purple-600 hover:bg-purple-700 text-white"
+        <div className="grid lg:grid-cols-12 gap-6">
+          {/* Controls - Left side 5 columns */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            <Card className="glass-panel border-white/5 bg-black/40">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white text-lg flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-blue-400" /> Webhook Simulation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-neutral-500 mb-4">Simulate external payment gateway webhooks confirming successful subscription renewals.</p>
+                <Button
+                  onClick={resetQuota}
+                  disabled={loading}
+                  className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                  variant="outline"
                 >
-                  Inject 10 Requests
+                  {loading ? <Loader2 className="animate-spin mr-2 w-4 h-4" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Fire Webhook: Reset Quotas to 10
                 </Button>
-              </div>
+                <Button
+                  onClick={callWebhookRepeatedly}
+                  disabled={loading}
+                  className="w-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20"
+                  variant="outline"
+                >
+                  {loading ? <Loader2 className="animate-spin mr-2 w-4 h-4" /> : <Shield className="w-4 h-4 mr-2" />}
+                  Fire Webhook 3× (Idempotency Test)
+                </Button>
+              </CardContent>
+            </Card>
 
-              <div className="bg-neutral-950 border border-white/10 rounded-lg h-[300px] overflow-auto p-4 font-mono text-xs space-y-2">
-                {txnLogs.length === 0 ? (
-                  <div className="text-neutral-600 h-full flex items-center justify-center">Awaiting payload injection...</div>
+            <Card className="glass-panel border-white/5 bg-black/40">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white text-lg flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-emerald-400" /> Load Generation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-neutral-500 mb-4">Fire simultaneous requests exactly at the same millisecond to test PostgreSQL serializable isolation limits.</p>
+                <Button
+                  onClick={() => generateLeads(10)}
+                  disabled={loading}
+                  className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  variant="outline"
+                >
+                  {loading ? <Loader2 className="animate-spin mr-2 w-4 h-4" /> : <Zap className="w-4 h-4 mr-2" />}
+                  Generate 10 Concurrent Leads
+                </Button>
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* Execution Logs - Right side 7 columns */}
+          <div className="lg:col-span-7 space-y-6 flex flex-col">
+            <Card className="glass-panel border-white/5 bg-black/40 flex flex-col">
+              <CardHeader className="pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white text-lg flex items-center gap-2">
+                    <TerminalSquare className="w-5 h-5 text-neutral-400" /> Live Terminal Log
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setLogs([])} className="h-6 text-xs text-neutral-500 hover:text-white">Clear</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 bg-black/60 font-mono text-[12px] space-y-2 min-h-[100px]">
+                {logs.length === 0 ? (
+                  <div className="flex items-center justify-center text-neutral-600 italic py-10">
+                    Awaiting instructions...
+                  </div>
                 ) : (
-                  txnLogs.map(log => (
-                    <div key={log.id} className="flex gap-2">
-                      <span className="text-neutral-500 shrink-0">[{log.time}]</span>
-                      <span className={log.success ? 'text-emerald-400' : 'text-red-400'}>{log.msg}</span>
-                    </div>
-                  ))
+                  <AnimatePresence>
+                    {logs.map((l, i) => (
+                      <motion.div 
+                        key={`${i}-${l.time}`}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={`pl-3 border-l-2 ${l.error ? 'border-red-500 text-red-400' : 'border-brand-accent/50 text-neutral-300'}`}
+                      >
+                        <span className="text-neutral-500 mr-3">[{l.time}]</span>
+                        {l.msg}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Webhook Testing */}
-          <Card className="glass-panel border-white/5 bg-black/40">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-blue-400" />
-                Webhook Idempotency Tester
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <p className="text-sm text-neutral-400">
-                Transmits cryptographically signed webhooks to test duplicate handling (Prisma <code className="text-neutral-300 bg-neutral-800 px-1 rounded">P2002</code>).
-              </p>
-              <div className="flex gap-4">
-                <Button 
-                  onClick={() => webhookMutation.mutate(false)}
-                  disabled={webhookMutation.isPending}
-                  className="flex-1 h-12" variant="outline"
-                >
-                  Send Unique Webhook (Reset Quotas)
-                </Button>
-                <Button 
-                  onClick={() => webhookMutation.mutate(true)}
-                  disabled={webhookMutation.isPending}
-                  className="flex-1 h-12 bg-blue-900/40 hover:bg-blue-900/60 text-blue-300 border border-blue-500/30"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Replay Webhook
-                </Button>
-              </div>
-
-              <div className="bg-neutral-950 border border-white/10 rounded-lg h-[300px] overflow-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-neutral-900 text-neutral-500 sticky top-0">
+            {/* Webhook Event Log Table */}
+            <Card className="glass-panel border-white/5 bg-black/40 flex flex-col">
+              <CardHeader className="pb-3 border-b border-white/5 shrink-0">
+                <CardTitle className="text-white text-base flex items-center gap-2">
+                  <Server className="w-4 h-4 text-purple-400" /> Processed Webhook Events
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-neutral-900 text-neutral-500 uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="px-4 py-2 font-medium">Timestamp</th>
-                      <th className="px-4 py-2 font-medium">Event ID</th>
-                      <th className="px-4 py-2 font-medium">DB Result</th>
+                      <th className="px-4 py-2 font-medium">Event ID (Idempotency Key)</th>
+                      <th className="px-4 py-2 font-medium">Processed At</th>
+                      <th className="px-4 py-2 font-medium text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {webhooksLoading ? (
-                      <tr><td colSpan={3} className="text-center py-8 text-neutral-600">Loading logs...</td></tr>
-                    ) : webhooks.map((w: any) => (
-                      <tr key={w.id} className="hover:bg-white/[0.02]">
-                        <td className="px-4 py-3 text-neutral-500">{new Date(w.processedAt).toLocaleTimeString()}</td>
-                        <td className="px-4 py-3 font-mono text-neutral-300">{w.eventId}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant={w.status === 'PROCESSED' ? 'neon' : 'secondary'} className="text-[10px]">
-                            {w.status === 'IGNORED_DUPLICATE' ? 'IGNORED (DUPLICATE)' : w.status}
-                          </Badge>
-                        </td>
+                    {webhookEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="text-center py-6 text-neutral-600 text-xs">No webhooks processed yet.</td>
                       </tr>
-                    ))}
+                    ) : (
+                      webhookEvents.map((w: any) => (
+                        <tr key={w.eventId} className="hover:bg-white/[0.02]">
+                          <td className="px-4 py-2.5 font-mono text-xs text-white">{w.eventId}</td>
+                          <td className="px-4 py-2.5 text-xs text-neutral-400">{new Date(w.processedAt).toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-right">
+                            <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">SUCCESS</Badge>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
-              </div>
-            </CardContent>
-          </Card>
-
+              </CardContent>
+            </Card>
+          </div>
         </div>
+
       </div>
     </div>
   )

@@ -1,75 +1,82 @@
-import prisma from "@/db/prisma"
-import { allocateProvidersForLead } from "./allocation-engine"
-import { emitDashboardUpdate } from "./realtime-service"
-import { logger } from "@/lib/logger"
-import { randomUUID } from "crypto"
+import prisma from '@/db/prisma'
+import { allocateProviders, AllocationResult } from '@/services/allocation-engine'
+import { realtimeService } from '@/services/realtime-service'
 
-export type CreateLeadInput = {
+export type LeadAllocationResponse = {
+  lead: {
+    id: number
+    customerName: string
+    phoneNumber: string
+    city: string
+    serviceId: number
+    description: string | null
+    createdAt: Date
+  }
+  assignments: AllocationResult[]
+  transactionDurationMs: number
+}
+
+/**
+ * Create a lead AND allocate providers inside ONE atomic transaction.
+ * Returns the lead, assignments with provider details, and transaction timing.
+ */
+export async function createLeadAndAllocate(payload: {
   customerName: string
   phoneNumber: string
   city: string
-  description: string
   serviceId: number
-}
+  description?: string
+}): Promise<LeadAllocationResponse> {
+  const startTime = performance.now()
 
-export async function createLeadWithAllocation(data: CreateLeadInput) {
-  const txId = randomUUID()
-  const startTime = Date.now()
+    const maxRetries = 5;
+    let result;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        result = await prisma.$transaction(async (tx) => {
+          // 1. Create lead — UNIQUE(phoneNumber, serviceId) enforced at DB level
+          const lead = await tx.lead.create({
+            data: {
+              customerName: payload.customerName,
+              phoneNumber: payload.phoneNumber,
+              city: payload.city,
+              serviceId: payload.serviceId,
+              description: payload.description ?? null,
+            },
+          })
 
-  logger.info({ event: "LEAD_CREATION_START", txId, serviceId: data.serviceId }, "Starting lead creation transaction")
+          // 2. Run allocation inside the SAME transaction
+          const assignments = await allocateProviders(tx, lead.id, lead.serviceId)
 
-  // Use Interactive Transaction for atomicity
-  const result = await prisma.$transaction(async (tx) => {
-    // 1. Fair allocation engine with deterministic locking
-    const allocatedProviders = await allocateProvidersForLead(tx, data.serviceId, txId)
-
-    // 2. Decrement quotas atomically
-    // Safe from deadlocks because locks were acquired deterministically in allocateProvidersForLead
-    const providerIds = allocatedProviders.map(p => p.id)
-    const updated = await tx.provider.updateMany({
-      where: { 
-        id: { in: providerIds },
-        remainingQuota: { gt: 0 } 
-      },
-      data: {
-        remainingQuota: { decrement: 1 }
-      }
-    })
-
-    if (updated.count !== providerIds.length) {
-      logger.error({ event: "QUOTA_UNDERFLOW", txId, expected: providerIds.length, updated: updated.count }, "Quota validation failed")
-      throw new Error("Quota validation failed during atomic decrement. One or more providers reached limit.")
-    }
-
-    // 3. Create Lead and Assignments
-    const lead = await tx.lead.create({
-      data: {
-        customerName: data.customerName,
-        phoneNumber: data.phoneNumber,
-        city: data.city,
-        description: data.description,
-        serviceId: data.serviceId,
-        assignments: {
-          create: providerIds.map(id => ({
-            providerId: id
-          }))
+          return { lead, assignments }
+        }, {
+          isolationLevel: 'Serializable',
+          timeout: 10000, // 10 second timeout
+        });
+        break; // Success, exit retry loop
+      } catch (error: any) {
+        // P2034 = Prisma transaction conflict, 40001 = Postgres serialization failure
+        if ((error?.code === 'P2034' || error?.message?.includes('40001') || error?.message?.includes('deadlock')) && attempt < maxRetries) {
+          // Add exponential backoff jitter before retrying
+          await new Promise(r => setTimeout(r, Math.random() * 50 * attempt));
+          continue;
         }
-      },
-      include: {
-        assignments: true
+        throw error;
       }
-    })
+    }
+    
+    if (!result) throw new Error('Failed to allocate lead after maximum retries');
 
-    logger.info({ event: "TRANSACTION_SUCCESS", txId, leadId: lead.id, durationMs: Date.now() - startTime }, "Transaction committed successfully")
-    return { lead, allocatedProviders }
-  }, {
-    isolationLevel: 'ReadCommitted', // Sufficient since we use explicit SELECT FOR UPDATE
-    maxWait: 5000,
-    timeout: 10000,
-  })
+  const transactionDurationMs = Math.round(performance.now() - startTime)
 
-  // Emit real-time dashboard update event after successful commit (Compensating action safe)
-  emitDashboardUpdate()
+  const response: LeadAllocationResponse = {
+    lead: result.lead,
+    assignments: result.assignments,
+    transactionDurationMs,
+  }
 
-  return result
+  // Emit SSE event AFTER commit (outside transaction)
+  realtimeService.emit('lead_created', response)
+
+  return response
 }

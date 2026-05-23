@@ -1,44 +1,14 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, Database, ShieldCheck, Zap, Server, Activity } from 'lucide-react'
+import { Database, ShieldCheck, Zap, Activity, Users, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background selection:bg-brand-accent selection:text-black">
-      {/* Navbar */}
-      <nav className="fixed top-0 w-full border-b border-white/5 bg-black/50 backdrop-blur-md z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded bg-brand-accent flex items-center justify-center">
-              <Database className="w-5 h-5 text-black" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">Prowider<span className="text-brand-accent">.</span></span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/request-service">
-              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Form</Button>
-            </Link>
-            <Link href="/distribution">
-              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Allocation</Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Dashboard</Button>
-            </Link>
-            <Link href="/real-time">
-              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Live Feed</Button>
-            </Link>
-            <Link href="/test-tools">
-              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Test Console</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <main className="pt-32 pb-16 px-6">
         <div className="max-w-7xl mx-auto">
@@ -48,38 +18,48 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Badge variant="neon" className="mb-6 px-4 py-1.5 text-sm">
-                <span className="w-2 h-2 rounded-full bg-brand-accent animate-pulse mr-2 inline-block"></span>
-                Full Stack Assignment Ready
-              </Badge>
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-brand-accent/10 border border-brand-accent/30 flex items-center justify-center">
+                  <Database className="w-8 h-8 text-brand-accent" />
+                </div>
+              </div>
               <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-white mb-6">
                 Prowider Mini <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-accent to-emerald-400">
                   Lead Distribution System
                 </span>
               </h1>
-              <p className="text-lg text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-                A production-ready implementation fulfilling all 5 requested features, including real-time updates, idempotent webhooks, and concurrency-safe fair allocation.
+              <p className="text-lg text-neutral-400 max-w-3xl mx-auto leading-relaxed">
+                This system simulates a highly concurrent, real-time backend engine for automatically assigning incoming leads to exactly 3 correct providers, respecting mandatory business rules, dynamic fair-rotation algorithms, and strict idempotent database safety.
               </p>
             </motion.div>
           </div>
 
-          {/* 5 Features Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20">
+          {/* 5 Features Detailed Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8 mt-24">
             
             {/* Feature 1 */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
-                <CardContent className="p-8 flex flex-col flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
-                    <span className="font-bold text-blue-400">1</span>
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-black/40 h-full flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                  <Users className="w-32 h-32" />
+                </div>
+                <CardContent className="p-8 flex flex-col flex-1 relative z-10">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shrink-0">
+                      <span className="font-bold text-blue-400 text-xl">1</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Public Customer Form</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Public Customer Form</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
-                    Customer ingestion form with strict database-level unique constraints preventing duplicate phone numbers for the same service.
-                  </p>
+                  <div className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1 space-y-3">
+                    <p>A customer ingestion interface that simulates lead capture.</p>
+                    <ul className="list-disc pl-5 space-y-1 text-neutral-300">
+                      <li>Captures Name, Phone, City, Service Type, and Description.</li>
+                      <li><strong>Database-Level Duplicate Prevention:</strong> The system enforces a strict unique compound index on <code className="bg-white/10 px-1 rounded text-white">phoneNumber + serviceId</code> to mathematically guarantee the same phone number cannot submit another lead for the same service.</li>
+                    </ul>
+                  </div>
                   <Link href="/request-service">
-                    <Button variant="outline" className="w-full">Open Form /request-service</Button>
+                    <Button variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10">Try Feature 1: Customer Form</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -87,72 +67,91 @@ export default function LandingPage() {
 
             {/* Feature 2 */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
-                <CardContent className="p-8 flex flex-col flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20">
-                    <span className="font-bold text-purple-400">2</span>
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-black/40 h-full flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                  <ShieldCheck className="w-32 h-32" />
+                </div>
+                <CardContent className="p-8 flex flex-col flex-1 relative z-10">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shrink-0">
+                      <span className="font-bold text-purple-400 text-xl">2</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Concurrency-Safe Distribution</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Lead Distribution Logic</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
-                    Core allocation engine using SELECT FOR UPDATE deterministic locking. Enforces mandatory providers and Virtual Time Fairness rotation.
-                  </p>
-                  <Link href="/dashboard">
-                    <Button variant="secondary" className="w-full">View Results in Dashboard</Button>
+                  <div className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1 space-y-3">
+                    <p>The core allocation engine operating as a single atomic transaction.</p>
+                    <ul className="list-disc pl-5 space-y-1 text-neutral-300">
+                      <li>Assigns exactly 3 providers per lead.</li>
+                      <li>Calculates Mandatory matches (e.g. Service 1 → Provider 1).</li>
+                      <li>Applies <strong>Fair Allocation Logic</strong> for the remaining slots using a persistent round-robin index pool.</li>
+                      <li>Uses PostgreSQL <code className="bg-white/10 px-1 rounded text-white">SELECT FOR UPDATE</code> locks and serializable isolation to perfectly prevent race conditions and over-assignments even under simultaneous traffic.</li>
+                    </ul>
+                  </div>
+                  <Link href="/distribution">
+                    <Button variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10">View Feature 2: Allocation Logic</Button>
                   </Link>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Feature 3 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
-                <CardContent className="p-8 flex flex-col flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20">
-                    <span className="font-bold text-emerald-400">3</span>
+            {/* Feature 3 & 4 Combined */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lg:col-span-2">
+              <Card className="glass-panel glass-panel-hover border-brand-accent/20 bg-brand-accent/5 h-full flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none text-brand-accent">
+                  <Activity className="w-48 h-48" />
+                </div>
+                <CardContent className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                        <span className="font-bold text-emerald-400 text-xl">3</span>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                        <span className="font-bold text-emerald-400 text-xl">4</span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white">Real-Time Provider Dashboard</h3>
+                    </div>
+                    <div className="text-neutral-400 text-sm leading-relaxed mb-6 space-y-3">
+                      <p>The command center for providers, updated invisibly in the background.</p>
+                      <ul className="list-disc pl-5 space-y-1 text-neutral-300">
+                        <li>Displays real-world database truth: Total Quotas, Remaining Quotas, and complete Lead Assignment histories.</li>
+                        <li><strong>Feature 4 integration:</strong> Powered by <code className="bg-white/10 px-1 rounded text-white text-emerald-400">Server-Sent Events (SSE)</code>. As soon as a transaction commits in PostgreSQL, the event bus pushes the update directly into the UI. No refreshing required.</li>
+                      </ul>
+                    </div>
+                    <Link href="/dashboard">
+                      <Button variant="neon" className="w-full sm:w-auto">Open Features 3 & 4: Dashboard</Button>
+                    </Link>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Provider Dashboard</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
-                    Comprehensive UI showing remaining quotas, leads received counts, and individual assigned leads directly from real database state.
-                  </p>
-                  <Link href="/dashboard">
-                    <Button variant="neon" className="w-full">Open /dashboard</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Feature 4 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
-                <CardContent className="p-8 flex flex-col flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4 border border-orange-500/20">
-                    <span className="font-bold text-orange-400">4</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Real-Time Updates</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
-                    Powered by Server-Sent Events (SSE). The dashboard automatically reflects newly assigned leads without any manual page refreshes.
-                  </p>
-                  <Link href="/request-service">
-                    <Button variant="outline" className="w-full">Test by submitting a lead</Button>
-                  </Link>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Feature 5 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="md:col-span-2 lg:col-span-1">
-              <Card className="glass-panel glass-panel-hover border-brand-accent/20 bg-brand-accent/5 h-full flex flex-col">
-                <CardContent className="p-8 flex flex-col flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-brand-accent/20 flex items-center justify-center mb-4 border border-brand-accent/40">
-                    <span className="font-bold text-brand-accent">5</span>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lg:col-span-2">
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-black/40 h-full flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                  <Settings className="w-48 h-48" />
+                </div>
+                <CardContent className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 shrink-0">
+                        <span className="font-bold text-orange-400 text-xl">5</span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white">Idempotent Webhook Testing Panel</h3>
+                    </div>
+                    <div className="text-neutral-400 text-sm leading-relaxed mb-6 space-y-3">
+                      <p>A specialized console for simulating external system integration (like Stripe payment webhooks) and load testing the backend logic.</p>
+                      <ul className="list-disc pl-5 space-y-1 text-neutral-300">
+                        <li>Allows resetting all quotas accurately via a simulated external HTTP endpoint.</li>
+                        <li><strong>Idempotency Guaranteed:</strong> Even if a webhook payload is received 10 times in the exact same millisecond, the Prisma unique constraint on <code className="bg-white/10 px-1 rounded text-white">eventId</code> mathematically guarantees the database quota will only be reset exactly <em>once</em>.</li>
+                        <li>Built-in concurrency injector to fire 10 leads simultaneously, proving the backend lock management works under extreme load.</li>
+                      </ul>
+                    </div>
+                    <Link href="/test-tools">
+                      <Button variant="outline" className="w-full sm:w-auto bg-white/5 border-white/10 hover:bg-white/10">Try Feature 5: Test Console</Button>
+                    </Link>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Webhook Simulation Panel</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
-                    Testing tools featuring idempotent Webhook calls to reset quotas, and a Concurrency injector to test simultaneous request handling.
-                  </p>
-                  <Link href="/test-tools">
-                    <Button variant="outline" className="w-full border-brand-accent text-brand-accent hover:bg-brand-accent/10">Open /test-tools</Button>
-                  </Link>
                 </CardContent>
               </Card>
             </motion.div>

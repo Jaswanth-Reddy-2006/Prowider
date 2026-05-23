@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
-import * as z from 'zod'
-import { createLeadWithAllocation } from '@/services/lead-service'
+import { z } from 'zod'
+import { createLeadAndAllocate } from '@/services/lead-service'
+
+export const dynamic = 'force-dynamic'
 
 const generateSchema = z.object({
   count: z.number().int().positive().max(50),
-  serviceId: z.number().int().positive()
+  serviceId: z.number().int().positive(),
 })
 
 export async function POST(req: Request) {
@@ -13,14 +15,14 @@ export async function POST(req: Request) {
     const { count, serviceId } = generateSchema.parse(body)
 
     const promises = Array.from({ length: count }).map((_, i) => {
-      // Use random phone number to bypass duplicate lead prevention for test leads
-      return createLeadWithAllocation({
+      return createLeadAndAllocate({
         customerName: `Test User ${Date.now()}-${i}`,
-        phoneNumber: `555-000-${Math.floor(1000 + Math.random() * 9000)}`,
-        city: "Test City",
-        description: `Concurrent stress test lead #${i+1}`,
-        serviceId
-      }).then(res => ({ success: true, data: res }))
+        phoneNumber: `555${Math.floor(100000000 + Math.random() * 900000000)}`,
+        city: 'Test City',
+        description: `Concurrent stress test lead #${i + 1}`,
+        serviceId,
+      })
+        .then(res => ({ success: true, data: res }))
         .catch(e => ({ success: false, error: e.message }))
     })
 
@@ -28,17 +30,23 @@ export async function POST(req: Request) {
     const successCount = results.filter(r => r.success).length
     const failedCount = results.length - successCount
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: `Attempted to generate ${count} leads.`,
       successCount,
       failedCount,
-      details: results 
+      details: results,
     })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, errors: (error as any).errors || (error as any).issues }, { status: 400 })
+      return NextResponse.json(
+        { success: false, errors: error.issues },
+        { status: 400 }
+      )
     }
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'Internal Server Error' },
+      { status: 500 }
+    )
   }
 }

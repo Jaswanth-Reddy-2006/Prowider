@@ -1,13 +1,22 @@
-import { EventEmitter } from 'events'
+import { EventEmitter } from 'events';
 
-const globalForRealtime = globalThis as unknown as { eventEmitter: EventEmitter }
+// Global singleton for realtime events (SSR compatible)
+const globalForRealtime = globalThis as unknown as { eventEmitter?: EventEmitter };
 
-export const eventEmitter = globalForRealtime.eventEmitter || new EventEmitter()
+export const realtimeService: EventEmitter =
+  globalForRealtime.eventEmitter ?? new EventEmitter();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForRealtime.eventEmitter = eventEmitter
+  // expose for hot‑reload / tests
+  globalForRealtime.eventEmitter = realtimeService;
 }
 
-export function emitDashboardUpdate() {
-  eventEmitter.emit('dashboard-update')
+/** Emit a generic event with optional payload */
+export function emit(event: string, data: any): void {
+  realtimeService.emit(event, data);
+}
+
+/** Convenience for dashboard updates (no payload) */
+export function emitDashboardUpdate(): void {
+  realtimeService.emit('dashboard-update');
 }

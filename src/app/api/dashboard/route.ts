@@ -1,42 +1,72 @@
 import { NextResponse } from 'next/server'
-import { eventEmitter } from '@/services/realtime-service'
-import { logger } from '@/lib/logger'
+import prisma from '@/db/prisma'
+import { realtimeService } from '@/services/realtime-service'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
-export async function GET(req: Request) {
+function formatSSE(data: any): string {
+  return `data: ${JSON.stringify(data)}\n\n`
+}
+
+export async function GET() {
+  const encoder = new TextEncoder()
+  let listenerCleanups: (() => void)[] = []
+
   const stream = new ReadableStream({
-    start(controller) {
-      const onUpdate = () => {
+    async start(controller) {
+      try {
+        // Send initial provider state
+        const providers = await prisma.provider.findMany({
+          include: { assignments: { select: { leadId: true, assignmentType: true } } },
+          orderBy: { id: 'asc' },
+        })
+        controller.enqueue(encoder.encode(formatSSE({ event: 'init', data: { providers } })))
+      } catch (err) {
+        // DB might not be ready yet, send empty init
+        controller.enqueue(encoder.encode(formatSSE({ event: 'init', data: { providers: [] } })))
+      }
+
+      // Keep-alive heartbeat every 30s to prevent connection timeouts
+      const heartbeat = setInterval(() => {
         try {
-          controller.enqueue(`data: ${JSON.stringify({ event: 'update', time: new Date().toISOString() })}\n\n`)
-        } catch (e) {
-          logger.warn({ event: "SSE_ENQUEUE_FAILED" }, "Failed to push to SSE stream, connection may be closed")
+          controller.enqueue(encoder.encode(': heartbeat\n\n'))
+        } catch {
+          clearInterval(heartbeat)
+        }
+      }, 30000)
+
+      // Listen for lead_created events
+      const onLeadCreated = (payload: any) => {
+        try {
+          controller.enqueue(encoder.encode(formatSSE({ event: 'lead_created', data: payload })))
+        } catch {
+          // Client disconnected
         }
       }
 
-      eventEmitter.on('dashboard-update', onUpdate)
-
-      // Send initial connection heartbeat
-      controller.enqueue(`data: ${JSON.stringify({ event: 'connected' })}\n\n`)
-
-      // 15-second ping to keep connection alive and detect dropped clients
-      const interval = setInterval(() => {
+      // Listen for quota_reset events
+      const onQuotaReset = (payload: any) => {
         try {
-          controller.enqueue(`data: ${JSON.stringify({ event: 'ping', time: new Date().toISOString() })}\n\n`)
-        } catch (e) {
-          clearInterval(interval)
-          eventEmitter.off('dashboard-update', onUpdate)
+          controller.enqueue(encoder.encode(formatSSE({ event: 'quota_reset', data: payload })))
+        } catch {
+          // Client disconnected
         }
-      }, 15000)
+      }
 
-      // Cleanup when connection closes
-      req.signal.addEventListener('abort', () => {
-        logger.info({ event: "SSE_CLIENT_DISCONNECT" }, "SSE Client disconnected, cleaning up closures")
-        clearInterval(interval)
-        eventEmitter.off('dashboard-update', onUpdate)
-      })
-    }
+      realtimeService.on('lead_created', onLeadCreated)
+      realtimeService.on('quota_reset', onQuotaReset)
+
+      listenerCleanups = [
+        () => clearInterval(heartbeat),
+        () => realtimeService.off('lead_created', onLeadCreated),
+        () => realtimeService.off('quota_reset', onQuotaReset),
+      ]
+    },
+    cancel() {
+      // Cleanup when client disconnects
+      listenerCleanups.forEach(fn => fn())
+    },
   })
 
   return new NextResponse(stream, {
@@ -44,6 +74,7 @@ export async function GET(req: Request) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   })
 }

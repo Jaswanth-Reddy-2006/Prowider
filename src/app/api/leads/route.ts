@@ -1,70 +1,58 @@
 import { NextResponse } from 'next/server'
-import * as z from 'zod'
-import { createLeadWithAllocation } from '@/services/lead-service'
-import { apiLimiter } from '@/lib/rate-limit'
-import { logger } from '@/lib/logger'
+import { z } from 'zod'
+import { createLeadAndAllocate } from '@/services/lead-service'
 import prisma from '@/db/prisma'
 
-const leadSchema = z.object({
-  customerName: z.string().min(2, "Name is required"),
-  phoneNumber: z.string().min(10, "Valid phone number required"),
-  city: z.string().min(2, "City is required"),
-  description: z.string().optional().default(""),
-  serviceId: z.number().int().positive()
+export const dynamic = 'force-dynamic'
+
+const LeadSchema = z.object({
+  customerName: z.string().min(1, 'Name is required'),
+  phoneNumber: z.string().min(10, 'Phone must be at least 10 digits').max(15),
+  city: z.string().min(1, 'City is required'),
+  serviceId: z.coerce.number().int().min(1).max(3),
+  description: z.string().optional(),
 })
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json()
-    const validatedData = leadSchema.parse(body)
-
-    const result = await createLeadWithAllocation(validatedData)
-
-    return NextResponse.json({ success: true, data: result }, { status: 201 })
-  } catch (error: any) {
-    console.error("DEBUG ERROR:", error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, errors: (error as any).errors || (error as any).issues }, { status: 400 })
+    const json = await request.json()
+    const parsed = LeadSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.errors.map(e => e.message).join(', ') },
+        { status: 400 }
+      )
     }
-    if (error.code === 'P2002') {
-      return NextResponse.json({ 
-        success: false, 
-        error: "A lead with this phone number already exists for this service." 
-      }, { status: 409 })
+
+    const result = await createLeadAndAllocate(parsed.data)
+    return NextResponse.json({ success: true, ...result })
+  } catch (e: any) {
+    // Handle Prisma unique constraint violation (duplicate phone+service)
+    if (e?.code === 'P2002') {
+      return NextResponse.json(
+        { success: false, error: 'A lead with this phone number already exists for this service.' },
+        { status: 409 }
+      )
     }
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: e.message || 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
 export async function GET() {
   try {
     const leads = await prisma.lead.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 20,
       include: {
         assignments: {
-          include: {
-            provider: true
-          }
+          include: { provider: true }
         }
-      }
-    })
-
-    const formatted = leads.map((l: any) => ({
-      id: l.id,
-      customerName: l.customerName,
-      phoneNumber: l.phoneNumber,
-      serviceId: l.serviceId,
-      createdAt: l.createdAt,
-      providers: l.assignments.map((a: any) => ({
-        id: a.provider.id,
-        name: a.provider.name,
-      }))
-    }))
-
-    return NextResponse.json({ success: true, data: formatted })
-  } catch (error: any) {
-    logger.error({ event: "FETCH_LEADS_ERROR", error }, "Failed to fetch leads")
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 })
+      },
+      orderBy: { id: 'desc' }
+    });
+    return NextResponse.json({ success: true, data: leads });
+  } catch (e: any) {
+    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
 }

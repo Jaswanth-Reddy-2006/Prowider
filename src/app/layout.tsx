@@ -33,9 +33,7 @@ function Navbar() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Dashboard</Button>
           </Link>
-          <Link href="/real-time">
-            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Live Feed</Button>
-          </Link>
+
           <Link href="/test-tools">
             <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Test Console</Button>
           </Link>

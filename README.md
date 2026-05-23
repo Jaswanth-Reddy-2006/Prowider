@@ -1,170 +1,86 @@
-# Prowider Mini Lead Distribution System - Submission Guide
+# Prowider Mini - Lead Distribution System
 
-## 📋 Project Overview
+A highly concurrent, real-time backend engine and SaaS operations dashboard designed for intelligent lead allocation. This platform is built to handle race conditions, enforce mandatory distribution rules, dynamically manage fair-rotation algorithms, and maintain strict idempotent safety.
 
-This is a **complete, production-ready implementation** of the Prowider Mini Lead Distribution System assignment. It demonstrates:
+![Dashboard Preview](docs/dashboard-preview.png) *(Note: You can add screenshots to a docs folder later)*
 
-- ✅ Correct provider allocation with business rules
-- ✅ Data consistency under concurrent operations
-- ✅ Webhook safety with idempotency
-- ✅ Real-time dashboard updates via Server-Sent Events
-- ✅ Database design with proper constraints
-- ✅ Clean, maintainable code with comprehensive documentation
+## 🚀 Core Features
 
-## 📁 Project Structure
+1. **Public Customer Ingestion Form**
+   - Captures lead details (Name, Phone, City, Service, Description).
+   - Enforces database-level duplicate prevention using unique compound indexes (`phoneNumber` + `serviceId`).
 
-```
-prowider-lead-distribution/
-├── app/
-│   ├── page.tsx                    # Home page with overview
-│   ├── globals.css                 # Global styles
-│   ├── layout.tsx                  # Root layout
-│   ├── request-service/
-│   │   └── page.tsx                # Customer service request form
-│   ├── dashboard/
-│   │   └── page.tsx                # Provider dashboard
-│   ├── test-tools/
-│   │   └── page.tsx                # Testing & debugging tools
-│   └── api/
-│       ├── leads/route.ts          # Lead creation & listing
-│       ├── providers/route.ts      # Provider dashboard data
-│       ├── webhooks/reset-quota/route.ts  # Webhook endpoint
-│       └── dashboard/route.ts      # Real-time SSE stream
-├── src/services/
-│   └── allocation-engine.ts        # Core allocation logic
-├── prisma/
-│   └── schema.prisma               # Database schema
-├── prisma/
-│   └── seed.ts                     # Database seeding
-├── README.md                       # Setup instructions
-├── ALGORITHM.md                    # Detailed algorithm documentation
-├── ARCHITECTURE.md                 # System Architecture & Design
-├── DEPLOYMENT.md                   # Deployment guide
-├── package.json                    # Dependencies
-└── next.config.ts                  # Next.js config
-```
+2. **Concurrency-Safe Distribution Engine**
+   - Atomically allocates exactly 3 providers per lead.
+   - **Mandatory Logic:** Directly routes specific services to specific providers.
+   - **Fair Rotation Algorithm:** Automatically rotates remaining lead slots across all active, available providers via a persistent round-robin index.
+   - Leverages native PostgreSQL `SELECT FOR UPDATE` locks to entirely prevent race conditions during extreme traffic spikes.
 
-## 🚀 Quick Start
+3. **Real-Time Operations Dashboard**
+   - Powered by **Server-Sent Events (SSE)**.
+   - UI updates instantly in the background without refreshing as soon as database transactions commit.
+   - Detailed provider modals displaying Remaining Quota, Total Leads, and comprehensive Assignment Histories.
+
+4. **Idempotent Webhook Testing Console**
+   - Simulate external API integrations (like a Stripe successful payment webhook) to reset provider quotas.
+   - **Idempotency Guarantee:** Duplicate webhooks hitting the server at the exact same millisecond will only process *once*, guaranteed by Prisma unique constraints on `eventId`.
+   - **Load Generation:** Built-in tool to instantly fire 10 concurrent leads to verify backend lock management under stress.
+
+## 🛠 Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Frontend:** React 19, Tailwind CSS, Framer Motion, Lucide React
+- **Backend/ORM:** Prisma
+- **Database:** PostgreSQL (Serializable Isolation)
+- **State Management:** TanStack React Query
+
+## 💻 Local Development Setup
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL 12+
+- PostgreSQL (Local or hosted via Supabase/Neon/Render)
 
-### Setup
-
+### 1. Clone & Install
 ```bash
-# 1. Install dependencies
-pnpm install
+git clone <your-repo-url>
+cd Prowider
+npm install
+```
 
-# 2. Configure database
-# Create PostgreSQL database:
-createdb prowider
-
-# Update .env with your DATABASE_URL:
+### 2. Environment Variables
+Create a `.env` file in the root directory and add your PostgreSQL connection string:
+```env
 DATABASE_URL="postgresql://user:password@localhost:5432/prowider"
+```
 
-# 3. Initialize database
+### 3. Database Initialization & Seeding
+Push the schema to your database and seed it with the default providers:
+```bash
 npx prisma db push
 npx prisma db seed
+```
 
-# 4. Start development server
+### 4. Run Development Server
+```bash
 npm run dev
-
-# 5. Open browser to http://localhost:3000
 ```
+Access the application at `http://localhost:3000`.
 
-## 📖 Key Features & Testing
+## ☁️ Deployment Guide
 
-### Feature 1: Request Service Form (`/request-service`)
-- Submit service enquiries
-- Duplicate prevention (same phone + service)
-- Auto-triggers lead allocation
-- **Test**: Try submitting same phone number twice for same service → should reject
+To deploy this application to production, you need a serverless hosting provider (like Vercel) and a managed PostgreSQL database.
 
-### Feature 2: Provider Dashboard (`/dashboard`)
-- View assigned leads per provider
-- Real-time quota tracking
-- Server-Sent Events for instant updates
-- **Test**: Open in one tab, create lead in another tab → should update automatically
+### 1. Database Hosting (Neon.tech or Supabase)
+1. Create a free PostgreSQL database on [Neon](https://neon.tech/) or [Supabase](https://supabase.com/).
+2. Copy the **Connection String** provided.
 
-### Feature 3: Test Tools (`/test-tools`)
-Comprehensive testing interface:
-
-1. **Reset Quota**: Single webhook call to reset provider quota
-   - Tests webhook endpoint
-   - Updates dashboard immediately
-
-2. **Idempotency Test**: Call webhook multiple times with same key
-   - Verifies only first call executes
-   - Demonstrates safety under duplicate deliveries
-
-3. **Concurrency Test**: Generate 10 leads simultaneously
-   - Creates leads in parallel
-   - Tests allocation under high concurrency
-   - Verifies no race conditions
-   - Shows success/failure count
-
-4. **Duplicate Prevention**: Tests duplicate enforcement
-   - Creates lead with phone + service 1
-   - Tries same phone + service 1 again → rejected
-   - Demonstrates database-level constraint
-
-## 🎯 Core Implementation Details
-
-### Allocation Algorithm
-
-**Service 1**: Provider 1 (mandatory) + 2 from [2,3,4] (fair)
-**Service 2**: Provider 5 (mandatory) + 2 from [6,7,8] (fair)
-**Service 3**: Providers 1,4 (mandatory) + 1 from [2,3,5,6,7,8] (fair)
-
-**Fair Distribution Method**: Virtual Time Fairness
-- Tracks `COUNT(assignedLeads)` and `MAX(assignedAt)`
-- Survives server restart (database persisted)
-- Deterministic and auditable
-- No randomness
-
-### Concurrency Safety
-
-**Duplicate Prevention**: Unique constraint at database level
-```sql
-UNIQUE(phoneNumber, serviceId)  -- Prevents duplicate leads
-UNIQUE(providerId, leadId)      -- Prevents duplicate assignments
-```
-
-**Transaction Safety**: Critical operations use deterministic database locking
-```typescript
-await prisma.$transaction([
-  // SELECT FOR UPDATE to serialize parallel executions
-]);
-```
-
-### Real-Time Updates
-
-**Method**: Server-Sent Events (SSE)
-- Client connects to `/api/dashboard` stream
-- Server broadcasts when new lead created
-- Dashboard automatically fetches updated data
-- 15-second ping keeps connection alive
-
-## 🔒 What's NOT Evaluated
-
-Per assignment instructions:
-- ❌ Pixel-perfect UI (focus: backend correctness)
-- ❌ In-memory storage (using PostgreSQL)
-- ❌ JSON file database (using PostgreSQL)
-- ❌ SQLite (using PostgreSQL)
-
-## ✅ What IS Evaluated
-
-Per assignment instructions:
-- ✅ Correctness of allocation logic
-- ✅ Reliability under simultaneous requests
-- ✅ Database design decisions
-- ✅ Real-world backend thinking
-- ✅ Clean, simple implementation
+### 2. Vercel Deployment
+1. Push this codebase to your GitHub repository.
+2. Go to [Vercel](https://vercel.com/) and create a "New Project", selecting your GitHub repository.
+3. In the **Environment Variables** section, add your `DATABASE_URL`.
+4. The Build Command (`npm run build`) and Install Command (`npm install`) will be auto-detected.
+5. Click **Deploy**. Vercel will automatically build your Next.js app and deploy it globally.
 
 ---
 
-**Built with**: Next.js 15 • TypeScript • PostgreSQL • Prisma • Server-Sent Events
-
-**Ready for**: Evaluation ✓ Testing ✓ Deployment ✓
+*Designed and engineered for backend-heavy SaaS operations.*

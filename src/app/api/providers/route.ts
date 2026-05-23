@@ -6,38 +6,38 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const providers = await prisma.provider.findMany({
+      orderBy: { id: 'asc' },
       include: {
-        _count: {
-          select: { assignments: true }
-        },
         assignments: {
-          include: {
-            lead: true
+          select: { 
+            leadId: true, 
+            assignmentType: true, 
+            assignedAt: true,
+            lead: {
+              select: { customerName: true, serviceId: true, createdAt: true }
+            }
           },
           orderBy: { assignedAt: 'desc' },
-          take: 5 // Latest 5 leads for the UI
-        }
+        },
       },
-      orderBy: { id: 'asc' }
     })
-    
-    const formatted = providers.map(p => ({
+
+    const data = providers.map(p => ({
       id: p.id,
       name: p.name,
-      monthlyQuota: p.monthlyQuota,
+      isMandatory: p.isMandatory,
+      status: p.status,
       remainingQuota: p.remainingQuota,
-      totalLeadsAssigned: p._count.assignments,
-      recentAssignments: p.assignments.map(a => ({
-        leadId: a.leadId,
-        customerName: a.lead.customerName,
-        serviceId: a.lead.serviceId,
-        assignedAt: a.assignedAt
-      }))
+      monthlyQuota: p.monthlyQuota,
+      totalLeadsAssigned: p.assignments.length,
+      recentAssignments: p.assignments.slice(0, 10),
     }))
-    
-    return NextResponse.json({ success: true, data: formatted })
+
+    return NextResponse.json({ data })
   } catch (error: any) {
-    console.error("Fetch Providers Error:", error)
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 })
+    return NextResponse.json(
+      { data: [], error: error.message },
+      { status: 500 }
+    )
   }
 }

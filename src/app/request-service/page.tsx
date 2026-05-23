@@ -1,185 +1,219 @@
 'use client'
 
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useMutation } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Database, Send, CheckCircle2, Server } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Loader2, CheckCircle2, AlertCircle, Clock, Users, Shield, RotateCw } from 'lucide-react'
 
-const formSchema = z.object({
-  customerName: z.string().min(2, "Required"),
-  phoneNumber: z.string().min(10, "Required"),
-  city: z.string().min(2, "Required"),
-  description: z.string().optional(),
+const leadSchema = z.object({
+  customerName: z.string().min(1, 'Name is required'),
+  phoneNumber: z.string().min(10, 'Phone must be at least 10 digits'),
+  city: z.string().min(1, 'City is required'),
   serviceId: z.coerce.number().min(1).max(3),
+  description: z.string().optional(),
 })
 
+type LeadInput = z.infer<typeof leadSchema>
+
 export default function RequestServicePage() {
-  const [allocationResult, setAllocationResult] = useState<any>(null)
-  
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema) as any,
-    defaultValues: {
-      customerName: '', phoneNumber: '', city: '', description: '', serviceId: 3
-    }
-  })
+  const queryClient = useQueryClient()
+  const [error, setError] = useState<string | null>(null)
+  const [successData, setSuccessData] = useState<any | null>(null)
+  const [serviceVal, setServiceVal] = useState<string>('1')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const mutation = useMutation({
-    mutationFn: async (values: z.infer<typeof formSchema>) => {
-      setAllocationResult(null)
+    mutationFn: async (values: LeadInput) => {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
+        body: JSON.stringify(values),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to create lead")
+      if (!res.ok) throw new Error(data.error || 'Failed to submit')
       return data
     },
-    onSuccess: (data) => {
-      setAllocationResult(data.data)
-      form.reset()
-    }
+    onSuccess: data => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ['providers'] })
+        setError(null)
+        setFieldErrors({})
+        setSuccessData(data)
+      }
+    },
+    onError: e => {
+      setError((e as Error).message)
+      setSuccessData(null)
+    },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    mutation.mutate(values)
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError(null)
+    setSuccessData(null)
+    setFieldErrors({})
+
+    const form = e.currentTarget
+    const raw = Object.fromEntries(new FormData(form)) as any
+    raw.serviceId = serviceVal
+
+    const result = leadSchema.safeParse(raw)
+    if (!result.success) {
+      const errors: Record<string, string> = {}
+      result.error.errors.forEach(err => {
+        if (err.path[0]) errors[err.path[0] as string] = err.message
+      })
+      setFieldErrors(errors)
+      return
+    }
+    mutation.mutate(result.data)
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 px-6 pb-20">
-      <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12">
-        {/* Left Column: Form */}
-        <div>
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-white tracking-tight mb-2">Lead Ingestion Endpoint</h1>
-            <p className="text-neutral-400">Submit a lead to automatically distribute it based on backend rules.</p>
-          </div>
+    <div className="min-h-screen bg-background flex items-center justify-center py-24 px-4 relative overflow-hidden">
+      {/* Decorative background blurs */}
+      <div className="absolute top-1/4 -left-64 w-96 h-96 bg-brand-accent/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 -right-64 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl" />
 
-          <Card className="glass-panel">
-            <CardContent className="p-8">
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-neutral-300">Customer Name</label>
-                    <input {...form.register('customerName')} className="w-full bg-black border border-white/10 rounded-md h-11 px-4 text-white focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none transition-all" placeholder="Jane Doe" />
-                    {form.formState.errors.customerName && <p className="text-red-400 text-xs">{form.formState.errors.customerName.message}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-neutral-300">Phone Number</label>
-                    <input {...form.register('phoneNumber')} className="w-full bg-black border border-white/10 rounded-md h-11 px-4 text-white focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none transition-all" placeholder="9999999999" />
-                    {form.formState.errors.phoneNumber && <p className="text-red-400 text-xs">{form.formState.errors.phoneNumber.message}</p>}
-                  </div>
-                </div>
+      <div className="w-full max-w-lg relative z-10 space-y-6">
+        <Card className="glass-panel border-brand-accent/20">
+          <CardHeader>
+            <CardTitle className="text-2xl text-white font-bold tracking-tight">
+              Request Service
+            </CardTitle>
+            <p className="text-sm text-neutral-400">Submit an enquiry and instantly match with providers.</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Customer Name</label>
+                <Input name="customerName" placeholder="e.g. John Doe" required className="bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
+                {fieldErrors.customerName && <p className="text-red-400 text-xs">{fieldErrors.customerName}</p>}
+              </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-neutral-300">City</label>
-                    <input {...form.register('city')} className="w-full bg-black border border-white/10 rounded-md h-11 px-4 text-white focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none transition-all" placeholder="San Francisco" />
-                    {form.formState.errors.city && <p className="text-red-400 text-xs">{form.formState.errors.city.message}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-neutral-300">Service Area ID (1-3)</label>
-                    <select {...form.register('serviceId')} className="w-full bg-black border border-white/10 rounded-md h-11 px-4 text-white focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none transition-all">
-                      <option value={1}>Service 1</option>
-                      <option value={2}>Service 2</option>
-                      <option value={3}>Service 3</option>
-                    </select>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Phone Number</label>
+                <Input name="phoneNumber" placeholder="e.g. 9999999999" required className="bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
+                {fieldErrors.phoneNumber && <p className="text-red-400 text-xs">{fieldErrors.phoneNumber}</p>}
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-neutral-300">Request Details</label>
-                  <textarea {...form.register('description')} className="w-full bg-black border border-white/10 rounded-md p-4 text-white focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none transition-all min-h-[100px]" placeholder="Optional description..." />
-                </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">City</label>
+                <Input name="city" placeholder="e.g. New York" required className="bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
+                {fieldErrors.city && <p className="text-red-400 text-xs">{fieldErrors.city}</p>}
+              </div>
 
-                <Button type="submit" variant="neon" className="w-full h-12 text-base mt-4" disabled={mutation.isPending}>
-                  {mutation.isPending ? "Processing Database Transaction..." : "Submit Lead"}
-                  {!mutation.isPending && <Send className="ml-2 w-4 h-4" />}
-                </Button>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Service Type</label>
+                <select
+                  value={serviceVal}
+                  onChange={e => setServiceVal(e.target.value)}
+                  className="w-full rounded-md border border-white/10 bg-black/50 px-3 py-3.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
+                >
+                  <option value="1">Service 1</option>
+                  <option value="2">Service 2</option>
+                  <option value="3">Service 3</option>
+                </select>
+              </div>
 
-                {mutation.isError && (
-                  <div className="p-4 rounded-md bg-red-950/50 border border-red-900 text-red-400 text-sm">
-                    {mutation.error.message}
-                  </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Description (optional)</label>
+                <textarea
+                  name="description"
+                  rows={4}
+                  placeholder="Additional details..."
+                  className="w-full rounded-md bg-black/50 border border-white/10 text-white placeholder:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 p-4 text-sm resize-y transition-all"
+                />
+              </div>
+
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="p-3 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2"
+                  >
+                    <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                    <p className="text-red-400 text-sm">{error}</p>
+                  </motion.div>
                 )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+              </AnimatePresence>
 
-        {/* Right Column: Allocation Results Viewer */}
-        <div className="flex flex-col pt-12 lg:pt-0">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
-              <Server className="w-5 h-5 text-brand-accent" />
-              Allocation Transparency
-            </h2>
-            <p className="text-neutral-400 text-sm">View exactly how the backend distributed your lead based on quota and fairness rules.</p>
-          </div>
+              <div className="pt-4">
+                <Button type="submit" disabled={mutation.isPending} className="w-full h-12 bg-brand-accent hover:bg-brand-accent/90 text-black font-bold text-base">
+                  {mutation.isPending ? <><Loader2 className="animate-spin mr-2 w-5 h-5" /> Processing Allocation...</> : 'Submit Enquiry & Allocate'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
-          <AnimatePresence mode="wait">
-            {!allocationResult ? (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex-1 border border-dashed border-white/10 rounded-xl flex items-center justify-center bg-black/20"
-              >
-                <div className="text-center text-neutral-500">
-                  <Database className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                  <p>Awaiting transaction payload...</p>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="result"
-                initial={{ opacity: 0, scale: 0.95 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                className="space-y-6"
-              >
-                <Card className="border-brand-accent/30 bg-brand-accent/5">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <CheckCircle2 className="w-8 h-8 text-brand-accent" />
-                      <div>
-                        <h3 className="text-lg font-bold text-brand-accent">Transaction Committed</h3>
-                        <p className="text-xs text-brand-accent/70 font-mono">Lead #{allocationResult.id} • Latency: {allocationResult.durationMs}ms</p>
-                      </div>
+        {/* Success Result Card */}
+        <AnimatePresence>
+          {successData && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <Card className="glass-panel border-brand-accent/30 bg-brand-accent/5">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-2 text-brand-accent">
+                    <CheckCircle2 className="w-6 h-6" />
+                    <span className="text-lg font-bold">Lead Created Successfully!</span>
+                  </div>
+
+                  <div className="text-sm text-neutral-300 space-y-1">
+                    <p>Lead ID: <strong className="text-white font-mono">#{successData.lead?.id}</strong></p>
+                    <p>Customer: <strong className="text-white">{successData.lead?.customerName}</strong></p>
+                    <p>Service: <strong className="text-white">Service {successData.lead?.serviceId}</strong></p>
+                  </div>
+
+                  <div className="border-t border-white/10 pt-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-4 h-4 text-brand-accent" />
+                      <span className="text-sm font-semibold text-brand-accent">Assigned Providers</span>
                     </div>
-
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium text-white border-b border-white/10 pb-2">Assigned Providers ({allocationResult.assignments.length}/3)</h4>
-                      <ul className="space-y-3">
-                        {allocationResult.assignments.map((a: any, i: number) => (
-                          <li key={i} className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-white/5">
-                            <div>
-                              <span className="text-white font-medium block">{a.providerName}</span>
-                              <span className="text-xs text-neutral-400">ID: {a.providerId}</span>
-                            </div>
-                            <div className="text-right">
-                              <Badge variant={a.isMandatory ? 'secondary' : 'outline'} className="text-[10px]">
-                                {a.isMandatory ? 'MANDATORY ASSIGNMENT' : 'FAIR ROTATION'}
-                              </Badge>
-                              <div className="text-xs text-neutral-500 mt-1">
-                                Quota Updated
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="space-y-2">
+                      {successData.assignments?.map((a: any) => (
+                        <div key={a.providerId} className="flex items-center justify-between bg-black/30 rounded-lg p-3 border border-white/5">
+                          <div className="flex items-center gap-2">
+                            {a.assignmentType === 'MANDATORY' ? (
+                              <Shield className="w-4 h-4 text-blue-400" />
+                            ) : (
+                              <RotateCw className="w-4 h-4 text-emerald-400" />
+                            )}
+                            <span className="text-white font-medium text-sm">{a.providerName || `Provider ${a.providerId}`}</span>
+                            <Badge
+                              variant={a.assignmentType === 'MANDATORY' ? 'secondary' : 'outline'}
+                              className={a.assignmentType === 'MANDATORY' ? 'bg-blue-900/30 text-blue-300 border-blue-500/30 text-xs' : 'text-emerald-300 border-emerald-500/30 text-xs'}
+                            >
+                              {a.assignmentType === 'MANDATORY' ? 'Mandatory' : 'Fair Rotation'}
+                            </Badge>
+                          </div>
+                          <span className="font-mono text-xs text-neutral-400">
+                            {a.remainingQuota ?? '?'}/{a.monthlyQuota ?? 10}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  </div>
 
-        </div>
+                  <div className="flex items-center gap-2 text-xs text-neutral-500 border-t border-white/10 pt-3">
+                    <Clock className="w-3.5 h-3.5" />
+                    Transaction Duration: <span className="text-brand-accent font-mono">{successData.transactionDurationMs ?? '—'}ms</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

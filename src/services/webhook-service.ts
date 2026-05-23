@@ -1,32 +1,38 @@
-import prisma from "@/db/prisma"
-import { emitDashboardUpdate } from "./realtime-service"
-import { logger } from "@/lib/logger"
+import prisma from '@/db/prisma'
+import { realtimeService } from '@/services/realtime-service'
 
-export async function processWebhookResetQuota(eventId: string) {
+/**
+ * Process a quota-reset webhook idempotently.
+ * Uses a transaction with a unique constraint on eventId to guarantee
+ * exactly-once processing even under concurrent duplicate calls.
+ */
+export async function processQuotaReset(eventId: string) {
   try {
-    await prisma.$transaction(async (tx) => {
-      // 1. Idempotency Check
-      await tx.webhookEvent.create({
-        data: { eventId }
-      })
+    const result = await prisma.$transaction(async (tx) => {
+      // Attempt to record the webhook event — will throw on duplicate
+      await tx.webhookEvent.create({ data: { eventId } })
 
-      // 2. Perform the quota reset safely
-      // Reset remainingQuota to monthlyQuota for all providers using Serializable isolation equivalent for safe resets
+      // Reset all providers' remainingQuota to their monthlyQuota
       await tx.$executeRaw`UPDATE "Provider" SET "remainingQuota" = "monthlyQuota"`
-    }, {
-      isolationLevel: 'Serializable'
+
+      // Also reset allocation state indices
+      await tx.$executeRaw`UPDATE "AllocationState" SET "lastAssignedProviderIdx" = 0, "updatedAt" = NOW()`
+
+      return { status: 'processed' as const, eventId }
     })
 
-    logger.info({ event: "WEBHOOK_PROCESSED", eventId }, "Webhook quotas reset successfully")
-    emitDashboardUpdate()
-    
-    return { success: true, message: "Quotas reset successfully" }
+    // Emit realtime event after successful commit
+    realtimeService.emit('quota_reset', { eventId })
+
+    return result
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      logger.info({ event: "WEBHOOK_IDEMPOTENT", eventId }, "Webhook duplicate rejected safely")
-      return { success: true, message: "Webhook already processed (idempotent)" }
+    // If it's a unique constraint violation, the event was already processed
+    if (error?.code === 'P2002') {
+      return { status: 'duplicate' as const, eventId }
     }
-    logger.error({ event: "WEBHOOK_INTERNAL_ERROR", eventId, error }, "Webhook processing failed")
     throw error
   }
 }
+
+// Alias for backwards compatibility with the webhooks/reset-quota route
+export const processWebhookResetQuota = processQuotaReset
