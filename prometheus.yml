@@ -1,9 +1,0 @@
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'prowider-backend'
-    static_configs:
-      - targets: ['host.docker.internal:3000']
-        labels:
-          application: 'allocation-engine'
