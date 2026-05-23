@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: prowider
+      POSTGRES_PASSWORD: prowiderpassword
+      POSTGRES_DB: prowider_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - prowider_net
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: always
+    environment:
+      DB_USER: prowider
+      DB_PASSWORD: prowiderpassword
+      DB_HOST: db
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+    ports:
+      - "6432:5432"
+    depends_on:
+      - db
+    networks:
+      - prowider_net
+
+  web:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://prowider:prowiderpassword@pgbouncer:5432/prowider_db?schema=public&pgbouncer=true"
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    depends_on:
+      - pgbouncer
+    networks:
+      - prowider_net
+
+volumes:
+  postgres_data:
+
+networks:
+  prowider_net:

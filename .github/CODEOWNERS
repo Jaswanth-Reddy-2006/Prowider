@@ -1,0 +1,4 @@
+* @prowider-backend-team
+/src/services/allocation-engine.ts @prowider-sre-team @prowider-backend-team
+/prisma/ @prowider-dba-team
+/.github/workflows/ @prowider-devops-team

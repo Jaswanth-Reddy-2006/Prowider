@@ -1,0 +1,92 @@
+name: Production CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 8
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'pnpm'
+    
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Typecheck
+      run: pnpm tsc --noEmit
+
+    - name: Lint
+      run: pnpm lint
+
+    - name: Unit Tests
+      run: pnpm test:unit
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: prowider
+          POSTGRES_PASSWORD: prowiderpassword
+          POSTGRES_DB: prowider_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 8
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Prisma Push
+      run: npx prisma db push --accept-data-loss
+      env:
+        DATABASE_URL: postgresql://prowider:prowiderpassword@localhost:5432/prowider_db?schema=public
+
+    - name: Integration Tests
+      run: pnpm test:integration
+      env:
+        DATABASE_URL: postgresql://prowider:prowiderpassword@localhost:5432/prowider_db?schema=public
+
+  build:
+    needs: [validate, integration-tests]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 8
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'pnpm'
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Build Next.js
+      run: pnpm build
