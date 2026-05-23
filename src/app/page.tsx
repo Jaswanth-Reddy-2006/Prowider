@@ -19,9 +19,19 @@ export default function LandingPage() {
             </div>
             <span className="text-xl font-bold tracking-tight text-white">Prowider<span className="text-brand-accent">.</span></span>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/request-service" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Submit Lead</Link>
-            <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+          <div className="flex items-center gap-4">
+            <Link href="/request-service">
+              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 1: Form</Button>
+            </Link>
+            <Link href="/distribution">
+              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 2: Allocation</Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 3: Dashboard</Button>
+            </Link>
+            <Link href="/real-time">
+              <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 4: Live Feed</Button>
+            </Link>
             <Link href="/test-tools">
               <Button variant="outline" size="sm" className="border-brand-accent/30 text-brand-accent hover:bg-brand-accent/10">
                 Feature 5: Test Console
