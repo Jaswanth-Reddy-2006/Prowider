@@ -76,13 +76,9 @@ export default function DashboardPage() {
 
         {/* Real Provider Quotas & Tables */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-400" />
-            Providers & Assigned Leads
-          </h2>
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {providersLoading ? (
-              <div className="col-span-2 text-neutral-500 py-10 text-center">Loading providers...</div>
+              <div className="col-span-4 text-neutral-500 py-10 text-center">Loading providers...</div>
             ) : providers.map((p: any) => (
               <Card key={p.id} className="glass-panel border-white/5 bg-black/40 flex flex-col">
                 <CardContent className="p-6 flex flex-col flex-1">
@@ -94,64 +90,32 @@ export default function DashboardPage() {
                         {p.name}
                         <Badge variant="outline" className="bg-white/5 text-[10px]">ID: {p.id}</Badge>
                       </h3>
-                      <div className="text-xs text-neutral-400 mt-1">
-                        Mandatory Services: <span className="text-blue-400 font-medium">{getMandatoryServices(p.id)}</span>
-                      </div>
                     </div>
-                    <Badge variant={p.remainingQuota === 0 ? 'destructive' : 'outline'}>
-                      {p.remainingQuota === 0 ? 'EXHAUSTED' : 'AVAILABLE'}
-                    </Badge>
                   </div>
 
-                  {/* Quota Progress */}
-                  <div className="mb-6 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-neutral-400">Monthly Quota Remaining</span>
-                      <span className={p.remainingQuota === 0 ? "text-red-400 font-bold" : "text-white font-bold"}>
+                  {/* Core Data Required by Assessment */}
+                  <div className="space-y-4 flex-1">
+                    <div>
+                      <div className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-1">Remaining Quota</div>
+                      <div className={p.remainingQuota === 0 ? "text-red-400 font-bold text-xl" : "text-white font-bold text-xl"}>
                         {p.remainingQuota} / {p.monthlyQuota}
-                      </span>
+                      </div>
                     </div>
-                    <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${p.remainingQuota === 0 ? 'bg-red-500' : 'bg-brand-accent'}`} 
-                        style={{ width: `${Math.min((p.remainingQuota / p.monthlyQuota) * 100, 100)}%` }}
-                      />
+
+                    <div>
+                      <div className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-1">Leads Received Count</div>
+                      <div className="text-white font-bold text-xl">{p.totalLeadsAssigned}</div>
                     </div>
-                    <div className="text-right text-xs text-neutral-500 mt-1">
-                      Total Leads Received: <strong className="text-white">{p.totalLeadsAssigned}</strong>
+
+                    <div>
+                      <div className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-1">Assigned Leads List</div>
+                      <div className="text-sm text-neutral-300">
+                        {p.recentAssignments?.length > 0 
+                          ? p.recentAssignments.map((a: any) => `Lead #${a.leadId}`).join(', ')
+                          : <span className="text-neutral-600 italic">None</span>
+                        }
+                      </div>
                     </div>
-                  </div>
-                  
-                  {/* Assigned Leads Table */}
-                  <div className="flex-1 border border-white/10 rounded-lg overflow-hidden bg-neutral-950/50">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-neutral-900/80 text-neutral-400 uppercase text-[10px]">
-                        <tr>
-                          <th className="px-4 py-2 font-medium">Lead ID</th>
-                          <th className="px-4 py-2 font-medium">Service</th>
-                          <th className="px-4 py-2 font-medium text-right">Assigned At</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {p.recentAssignments?.length > 0 ? (
-                          p.recentAssignments.map((a: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="px-4 py-3 font-mono text-white">#{a.leadId}</td>
-                              <td className="px-4 py-3 text-neutral-300">Service {a.serviceId}</td>
-                              <td className="px-4 py-3 text-right font-mono text-neutral-500">
-                                {new Date(a.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={3} className="px-4 py-8 text-center text-neutral-600 italic">
-                              No leads assigned yet
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
                   </div>
 
                 </CardContent>
