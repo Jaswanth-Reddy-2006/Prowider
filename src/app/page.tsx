@@ -22,11 +22,6 @@ export default function LandingPage() {
           <div className="flex items-center gap-6">
             <Link href="/request-service" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Submit Lead</Link>
             <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/test-tools">
-              <Button variant="outline" size="sm" className="border-brand-accent/30 text-brand-accent hover:bg-brand-accent/10">
-                Test Console
-              </Button>
-            </Link>
           </div>
         </div>
       </nav>
