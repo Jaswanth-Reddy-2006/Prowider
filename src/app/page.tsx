@@ -22,6 +22,11 @@ export default function LandingPage() {
           <div className="flex items-center gap-6">
             <Link href="/request-service" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Submit Lead</Link>
             <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+            <Link href="/test-tools">
+              <Button variant="outline" size="sm" className="border-brand-accent/30 text-brand-accent hover:bg-brand-accent/10">
+                Feature 5: Test Console
+              </Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -29,7 +34,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <main className="pt-32 pb-16 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto mt-20">
+          <div className="flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto mt-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -37,88 +42,115 @@ export default function LandingPage() {
             >
               <Badge variant="neon" className="mb-6 px-4 py-1.5 text-sm">
                 <span className="w-2 h-2 rounded-full bg-brand-accent animate-pulse mr-2 inline-block"></span>
-                v2.0 Enterprise Engine Live
+                Full Stack Assignment Ready
               </Badge>
-              <h1 className="text-6xl sm:text-7xl font-extrabold tracking-tight text-white mb-6">
-                Distributed Lead <br />
+              <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-white mb-6">
+                Prowider Mini <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-accent to-emerald-400">
-                  Allocation Engine
+                  Lead Distribution System
                 </span>
               </h1>
-              <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-                A battle-tested production backend demonstrating absolute concurrency safety, Virtual Time fairness rotation, and deterministic row-level locking.
+              <p className="text-lg text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+                A production-ready implementation fulfilling all 5 requested features, including real-time updates, idempotent webhooks, and concurrency-safe fair allocation.
               </p>
             </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="flex items-center gap-4 pt-4"
-            >
-              <Link href="/dashboard">
-                <Button variant="neon" size="lg" className="h-14 px-8 text-lg">
-                  Open Control Center
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-              <Link href="/request-service">
-                <Button variant="outline" size="lg" className="h-14 px-8 text-lg">
-                  Simulate Ingestion
-                </Button>
-              </Link>
-            </motion.div>
           </div>
 
-          {/* Architecture Highlights Grid */}
-          <div className="grid md:grid-cols-3 gap-6 mt-32">
+          {/* 5 Features Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20">
+            
+            {/* Feature 1 */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
+                <CardContent className="p-8 flex flex-col flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
+                    <span className="font-bold text-blue-400">1</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Public Customer Form</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
+                    Customer ingestion form with strict database-level unique constraints preventing duplicate phone numbers for the same service.
+                  </p>
+                  <Link href="/request-service">
+                    <Button variant="outline" className="w-full">Open Form /request-service</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Feature 2 */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
+                <CardContent className="p-8 flex flex-col flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20">
+                    <span className="font-bold text-purple-400">2</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Lead Distribution Logic</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
+                    Core allocation engine using SELECT FOR UPDATE deterministic locking. Enforces mandatory providers and Virtual Time Fairness rotation.
+                  </p>
+                  <Link href="/dashboard">
+                    <Button variant="secondary" className="w-full">View Results in Dashboard</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Feature 3 */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01]">
-                <CardContent className="p-8">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-6 border border-emerald-500/20">
-                    <ShieldCheck className="w-6 h-6 text-emerald-400" />
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
+                <CardContent className="p-8 flex flex-col flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20">
+                    <span className="font-bold text-emerald-400">3</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-3">Deterministic Locking</h3>
-                  <p className="text-neutral-400 leading-relaxed">
-                    Zero deadlocks under extreme load. PostgreSQL <code className="text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded text-sm">SELECT FOR UPDATE</code> ensures sequential processing of overlapping provider states.
+                  <h3 className="text-lg font-semibold text-white mb-2">Provider Dashboard</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
+                    Comprehensive UI showing remaining quotas, leads received counts, and individual assigned leads directly from real database state.
                   </p>
+                  <Link href="/dashboard">
+                    <Button variant="neon" className="w-full">Open /dashboard</Button>
+                  </Link>
                 </CardContent>
               </Card>
             </motion.div>
 
+            {/* Feature 4 */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01]">
-                <CardContent className="p-8">
-                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-6 border border-blue-500/20">
-                    <Activity className="w-6 h-6 text-blue-400" />
+              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01] h-full flex flex-col">
+                <CardContent className="p-8 flex flex-col flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4 border border-orange-500/20">
+                    <span className="font-bold text-orange-400">4</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-3">Virtual Time Fairness</h3>
-                  <p className="text-neutral-400 leading-relaxed">
-                    Eliminates stateful rotation bottlenecks. Eligibility is scored dynamically via <code className="text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded text-sm">COUNT(assigned)</code> & <code className="text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded text-sm">MAX(assignedAt)</code>.
+                  <h3 className="text-lg font-semibold text-white mb-2">Real-Time Updates</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
+                    Powered by Server-Sent Events (SSE). The dashboard automatically reflects newly assigned leads without any manual page refreshes.
                   </p>
+                  <Link href="/request-service">
+                    <Button variant="outline" className="w-full">Test by submitting a lead</Button>
+                  </Link>
                 </CardContent>
               </Card>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <Card className="glass-panel glass-panel-hover border-white/5 bg-white/[0.01]">
-                <CardContent className="p-8">
-                  <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-6 border border-purple-500/20">
-                    <Zap className="w-6 h-6 text-purple-400" />
+            {/* Feature 5 */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="md:col-span-2 lg:col-span-1">
+              <Card className="glass-panel glass-panel-hover border-brand-accent/20 bg-brand-accent/5 h-full flex flex-col">
+                <CardContent className="p-8 flex flex-col flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-brand-accent/20 flex items-center justify-center mb-4 border border-brand-accent/40">
+                    <span className="font-bold text-brand-accent">5</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-3">Realtime Observability</h3>
-                  <p className="text-neutral-400 leading-relaxed">
-                    SSE-powered operational streams with 15-second persistent heartbeats and memory-leak protection for live dashboard sync.
+                  <h3 className="text-lg font-semibold text-white mb-2">Webhook Simulation Panel</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-1">
+                    Testing tools featuring idempotent Webhook calls to reset quotas, and a Concurrency injector to test simultaneous request handling.
                   </p>
+                  <Link href="/test-tools">
+                    <Button variant="outline" className="w-full border-brand-accent text-brand-accent hover:bg-brand-accent/10">Open /test-tools</Button>
+                  </Link>
                 </CardContent>
               </Card>
             </motion.div>
+
           </div>
           
-          <div className="mt-32 text-center pb-20">
-            <h2 className="text-2xl font-bold text-white mb-4">Production Ready.</h2>
-            <p className="text-neutral-500">Engineered with Next.js 15, PostgreSQL, Prisma, and Pino.</p>
-          </div>
         </div>
       </main>
     </div>
