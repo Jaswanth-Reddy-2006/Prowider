@@ -1,46 +1,52 @@
-# Prowider Mini - Lead Distribution System
+# Prowider Mini - Lead Distribution System 🚀
 
-A highly concurrent, real-time backend engine and SaaS operations dashboard designed for intelligent lead allocation.
+**Live Deployment:** [https://prowider-taupe.vercel.app](https://prowider-taupe.vercel.app)
 
-## 🚀 Features
-- **Public Customer Form:** Captures leads and enforces strict database-level duplicate prevention (`phoneNumber` + `serviceId`).
-- **Concurrency-Safe Engine:** Distributes leads to exactly 3 providers using native PostgreSQL `SELECT FOR UPDATE` locks. Enforces Mandatory routing and Fair Rotation simultaneously.
-- **Real-Time Dashboard:** Powered by Server-Sent Events (SSE). The UI updates instantly as backend database transactions commit.
-- **Webhook Console:** An idempotent testing panel to safely simulate payment webhooks and execute concurrency load generation.
+> **Note:** This project was built as an **Internship Assignment** to demonstrate advanced backend engineering, concurrent transaction handling, and real-time operations. The goal was to build a highly scalable, real-time lead distribution engine capable of handling race conditions and strict allocation algorithms.
+
+## 🌟 Assignment Overview & Technical Implementation
+
+This project implements a complete SaaS backend engine and operations dashboard designed for intelligent lead allocation. 
+
+To satisfy the internship requirements, the system was engineered with a focus on **concurrency safety**, **idempotency**, and **real-time UI updates**:
+
+- **Concurrency-Safe Engine:** Distributes leads to exactly 3 providers using native PostgreSQL `SELECT FOR UPDATE` locks. This guarantees mathematically perfect distribution even if thousands of webhooks hit the server at the exact same millisecond.
+- **Advanced Distribution Algorithms:** Implements simultaneous execution of both *Mandatory Direct Routing* (e.g. Service 1 → Provider 1) and *Persistent Fair Rotation* for the remaining slots.
+- **Idempotency Guarantee:** Duplicate webhooks (simulating payment processors) are safely caught and ignored using Prisma unique constraints on `eventId`.
+- **Real-Time Dashboard (SSE):** The operations dashboard is powered by Server-Sent Events (SSE). The UI automatically updates in the background instantly as backend database transactions commit—no manual refreshing required.
 
 ---
 
-## ☁️ Production Deployment Guide (The Best Way)
+## 🛠 Tech Stack Used
+- **Framework:** Next.js 15 (App Router, Turbopack)
+- **Frontend UI:** React 19, Tailwind CSS, Framer Motion, Lucide React
+- **Backend/ORM:** Prisma ORM
+- **Database:** Serverless PostgreSQL (Neon.tech) with Serializable Isolation
+- **State Management:** TanStack React Query
+- **Deployment:** Vercel
 
-This application is built with Next.js 15 App Router and Prisma. It is designed to be fully serverless. **Do not use Docker** for standard deployment. The best, fastest, and most resilient deployment strategy is **Vercel + Serverless PostgreSQL**.
+---
 
-### Step 1: Set up the Database (Neon.tech)
-Because the allocation engine relies heavily on PostgreSQL locking mechanisms (`SELECT FOR UPDATE`), you need a real Postgres database.
-1. Go to [Neon.tech](https://neon.tech/) (or Supabase) and create a free project.
-2. Copy your **PostgreSQL Connection String**.
-   *It will look like:* `postgresql://user:password@ep-cold-surf.us-east-2.aws.neon.tech/neondb?sslmode=require`
+## ☁️ Production Deployment Details
 
-### Step 2: Deploy to Vercel
-1. Go to [Vercel](https://vercel.com/) and click **"Add New Project"**.
-2. Import your GitHub repository (`Prowider`).
-3. Under **Environment Variables**, add the following key:
-   - **Name:** `DATABASE_URL`
-   - **Value:** *(paste your Neon.tech connection string)*
-4. Click **Deploy**. Vercel will automatically run `npm install`, generate the Prisma client, and deploy your site globally.
+This application is designed to be fully serverless and is currently deployed on **Vercel** with a **Neon.tech Serverless Postgres** database.
 
-### Step 3: Initialize the Production Database
-Once Vercel finishes deploying, your application is live, but your production database is completely empty. You need to push your Prisma schema and seed it.
+### How to Run Locally
 
-1. Open your terminal on your local machine inside the project folder.
-2. In your local `.env` file, temporarily replace your local `DATABASE_URL` with your **Neon.tech connection string**.
-3. Run the following command to push the tables to production:
+If you want to clone and run this assignment locally on your own machine:
+
+1. Clone the repository: `git clone https://github.com/Jaswanth-Reddy-2006/Prowider.git`
+2. Install dependencies: `npm install`
+3. Set up your `.env` file with a local PostgreSQL connection string:
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/prowider"
+   ```
+4. Push the schema and seed the initial assignment data:
    ```bash
    npx prisma db push
-   ```
-4. Run the following command to seed the production database with the 8 initial providers:
-   ```bash
    npx prisma db seed
    ```
-5. **Important:** Change your local `.env` file back to your local development database string so you don't accidentally edit production data when testing locally.
-
-🎉 **You are fully live!** Visit your Vercel deployment URL to use the real-time system.
+5. Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
