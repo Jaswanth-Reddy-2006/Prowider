@@ -91,25 +91,25 @@ export default function RequestServicePage() {
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Customer Name</label>
-                <Input name="customerName" placeholder="e.g. John Doe" required className="bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Customer Name</label>
+                <Input name="customerName" placeholder="e.g. John Doe" required className="w-full bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
                 {fieldErrors.customerName && <p className="text-red-400 text-xs">{fieldErrors.customerName}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Phone Number</label>
-                <Input name="phoneNumber" placeholder="e.g. 9999999999" required className="bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Phone Number</label>
+                <Input name="phoneNumber" placeholder="e.g. 9999999999" required className="w-full bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
                 {fieldErrors.phoneNumber && <p className="text-red-400 text-xs">{fieldErrors.phoneNumber}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">City</label>
-                <Input name="city" placeholder="e.g. New York" required className="bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">City</label>
+                <Input name="city" placeholder="e.g. New York" required className="w-full bg-black/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-brand-accent/50 py-6" />
                 {fieldErrors.city && <p className="text-red-400 text-xs">{fieldErrors.city}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Service Type</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Service Type</label>
                 <select
                   value={serviceVal}
                   onChange={e => setServiceVal(e.target.value)}
@@ -122,7 +122,7 @@ export default function RequestServicePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Description (optional)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Description (optional)</label>
                 <textarea
                   name="description"
                   rows={4}
