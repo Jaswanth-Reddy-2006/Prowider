@@ -25,20 +25,20 @@ function Navbar() {
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/request-service">
-            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 1: Form</Button>
+            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Form</Button>
           </Link>
           <Link href="/distribution">
-            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 2: Allocation</Button>
+            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Allocation</Button>
           </Link>
           <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 3: Dashboard</Button>
+            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Dashboard</Button>
           </Link>
           <Link href="/real-time">
-            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Feature 4: Live Feed</Button>
+            <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">Live Feed</Button>
           </Link>
           <Link href="/test-tools">
             <Button variant="outline" size="sm" className="border-brand-accent/30 text-brand-accent hover:bg-brand-accent/10">
-              Feature 5: Test Console
+              Test Console
             </Button>
           </Link>
         </div>

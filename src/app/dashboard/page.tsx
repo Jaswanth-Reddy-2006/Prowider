@@ -74,60 +74,39 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Real Provider Quotas */}
+        {/* Real Provider Quotas & Tables */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-400" />
             Providers & Assigned Leads
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid lg:grid-cols-2 gap-6">
             {providersLoading ? (
-              <div className="col-span-4 text-neutral-500 py-10 text-center">Loading providers...</div>
+              <div className="col-span-2 text-neutral-500 py-10 text-center">Loading providers...</div>
             ) : providers.map((p: any) => (
               <Card key={p.id} className="glass-panel border-white/5 bg-black/40 flex flex-col">
-                <CardContent className="p-5 flex flex-col flex-1">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-white font-medium">{p.name}</h3>
-                      <Badge variant={p.remainingQuota === 0 ? 'destructive' : 'outline'} className="text-[10px]">
-                        {p.remainingQuota === 0 ? 'EXHAUSTED' : 'AVAILABLE'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex justify-between text-xs text-neutral-400 mb-4">
-                      <span>ID: {p.id}</span>
-                      <span>Total Leads: <strong className="text-white">{p.totalLeadsAssigned}</strong></span>
-                    </div>
-                    
-                    <div className="mb-4 space-y-1">
-                      <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Mandatory Services</div>
-                      <div className="text-sm font-medium text-blue-400">{getMandatoryServices(p.id)}</div>
-                    </div>
-                  </div>
+                <CardContent className="p-6 flex flex-col flex-1">
                   
-                  {/* Assigned Leads Table for this Provider */}
-                  <div className="mt-2 mb-6 flex-1">
-                    <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Recent Assignments</div>
-                    {p.recentAssignments?.length > 0 ? (
-                      <div className="space-y-2">
-                        {p.recentAssignments.map((a: any, idx: number) => (
-                          <div key={idx} className="bg-neutral-900/50 p-2 rounded text-xs border border-white/5 flex justify-between items-center">
-                            <div>
-                              <span className="text-white">Lead #{a.leadId}</span>
-                              <span className="text-neutral-500 ml-2">Svc {a.serviceId}</span>
-                            </div>
-                            <span className="text-neutral-500">{new Date(a.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        ))}
+                  {/* Provider Header */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg text-white font-semibold flex items-center gap-2">
+                        {p.name}
+                        <Badge variant="outline" className="bg-white/5 text-[10px]">ID: {p.id}</Badge>
+                      </h3>
+                      <div className="text-xs text-neutral-400 mt-1">
+                        Mandatory Services: <span className="text-blue-400 font-medium">{getMandatoryServices(p.id)}</span>
                       </div>
-                    ) : (
-                      <div className="text-xs text-neutral-600 italic">No leads assigned yet</div>
-                    )}
+                    </div>
+                    <Badge variant={p.remainingQuota === 0 ? 'destructive' : 'outline'}>
+                      {p.remainingQuota === 0 ? 'EXHAUSTED' : 'AVAILABLE'}
+                    </Badge>
                   </div>
 
-                  <div className="space-y-2 mt-auto border-t border-white/10 pt-4">
+                  {/* Quota Progress */}
+                  <div className="mb-6 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-neutral-400">Quota</span>
+                      <span className="text-neutral-400">Monthly Quota Remaining</span>
                       <span className={p.remainingQuota === 0 ? "text-red-400 font-bold" : "text-white font-bold"}>
                         {p.remainingQuota} / {p.monthlyQuota}
                       </span>
@@ -138,71 +117,46 @@ export default function DashboardPage() {
                         style={{ width: `${Math.min((p.remainingQuota / p.monthlyQuota) * 100, 100)}%` }}
                       />
                     </div>
+                    <div className="text-right text-xs text-neutral-500 mt-1">
+                      Total Leads Received: <strong className="text-white">{p.totalLeadsAssigned}</strong>
+                    </div>
                   </div>
+                  
+                  {/* Assigned Leads Table */}
+                  <div className="flex-1 border border-white/10 rounded-lg overflow-hidden bg-neutral-950/50">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-neutral-900/80 text-neutral-400 uppercase text-[10px]">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">Lead ID</th>
+                          <th className="px-4 py-2 font-medium">Service</th>
+                          <th className="px-4 py-2 font-medium text-right">Assigned At</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {p.recentAssignments?.length > 0 ? (
+                          p.recentAssignments.map((a: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="px-4 py-3 font-mono text-white">#{a.leadId}</td>
+                              <td className="px-4 py-3 text-neutral-300">Service {a.serviceId}</td>
+                              <td className="px-4 py-3 text-right font-mono text-neutral-500">
+                                {new Date(a.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={3} className="px-4 py-8 text-center text-neutral-600 italic">
+                              No leads assigned yet
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
                 </CardContent>
               </Card>
             ))}
-          </div>
-        </div>
-
-        {/* Real Lead Assignment Table */}
-        <div className="space-y-4 pt-8 border-t border-white/5">
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-400" />
-            All Leads & Provider Assignments
-          </h2>
-          
-          <div className="bg-black border border-white/10 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="bg-neutral-900 text-neutral-400 uppercase text-xs">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Lead Details</th>
-                  <th className="px-6 py-4 font-medium">Service</th>
-                  <th className="px-6 py-4 font-medium">Assigned Providers</th>
-                  <th className="px-6 py-4 font-medium text-right">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {leadsLoading ? (
-                  <tr><td colSpan={4} className="text-center py-10 text-neutral-500">Loading assignments...</td></tr>
-                ) : leads.map((lead: any) => (
-                  <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-brand-accent font-medium">#{lead.id}</span>
-                        <span className="text-white">{lead.customerName}</span>
-                      </div>
-                      <div className="text-xs text-neutral-500 mt-0.5">{lead.phoneNumber}</div>
-                    </td>
-                    <td className="px-6 py-4 text-neutral-300">
-                      <Badge variant="outline" className="bg-white/5 text-neutral-300 border-white/10">
-                        Service {lead.serviceId}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {lead.providers.map((p: any) => {
-                          const isMandatory = (lead.serviceId === 1 && p.id === 1) || 
-                                              (lead.serviceId === 2 && p.id === 5) || 
-                                              (lead.serviceId === 3 && (p.id === 1 || p.id === 4));
-                          return (
-                            <Badge key={p.id} variant={isMandatory ? 'secondary' : 'outline'} className={isMandatory ? "bg-blue-900/30 text-blue-300 border-blue-500/30" : "text-neutral-400"}>
-                              {p.name} <span className="opacity-50 ml-1">{isMandatory ? ' (Mandatory)' : ' (Fair)'}</span>
-                            </Badge>
-                          )
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono text-neutral-500 text-xs">
-                      {new Date(lead.createdAt).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {leads.length === 0 && !leadsLoading && (
-              <div className="text-center py-10 text-neutral-500">No leads generated yet.</div>
-            )}
           </div>
         </div>
 
