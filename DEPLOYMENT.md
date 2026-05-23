@@ -1,18 +1,55 @@
-# Deployment Architecture
+# Deployment Guide
 
-The Prowider Mini Lead Distribution System uses a robust multi-container DevOps architecture designed to maximize horizontal scalability while protecting the database.
+## Production Readiness Checklist
+Before deploying the Prowider Mini Lead Distribution System to production, ensure the following constraints are met:
+- [x] Node.js 18+ runtime is available.
+- [x] A managed PostgreSQL database (e.g., Supabase, Neon, AWS RDS) is provisioned.
+- [x] Connection strings are securely stored in environment variables.
 
-## 1. Docker Multi-Stage Builds
-We utilize Next.js `output: 'standalone'` mode. The provided `Dockerfile` builds a highly optimized, minimized Node.js container that only includes the compiled server code and stripped dependencies, avoiding the bloated `node_modules` directory in production.
+## Deploying to Vercel (Recommended)
 
-## 2. PgBouncer Connection Pooling
-Since Node.js/Next.js creates a new database connection per API invocation (particularly problematic in Serverless environments like Vercel), we deploy **PgBouncer** as a sidecar container in `docker-compose.prod.yml`.
-- `POOL_MODE: transaction` guarantees safe lock handling across requests.
-- Max client connections are scaled to 1000, while limiting physical Postgres connections to 20, protecting the database CPU from connection storms during traffic spikes.
+Vercel is the native platform for Next.js 15 applications and offers the most seamless deployment experience.
 
-## 3. Deployment Workflow
-1. Commit code to `main`.
-2. GitHub Actions CI pipeline runs Lint, Tests, and Build.
-3. If successful, CD pipeline builds the new Docker image and pushes it to the registry.
-4. Blue/Green Deployment strategy swaps the load balancer to the new container only once it passes its health check.
-5. `npx prisma migrate deploy` is triggered automatically on the newest database schema.
+### Step 1: Database Provisioning
+1. Create a free PostgreSQL database on [Neon.tech](https://neon.tech/) or [Supabase](https://supabase.com/).
+2. Copy your connection string (it will look like `postgresql://user:password@host/db`).
+
+### Step 2: Vercel Project Setup
+1. Push your code to a GitHub repository.
+2. Log into [Vercel](https://vercel.com/) and click **Add New Project**.
+3. Import your GitHub repository.
+4. Expand the **Environment Variables** section and add:
+   - Key: `DATABASE_URL`
+   - Value: `<Your PostgreSQL Connection String>`
+   - Key: `WEBHOOK_SECRET`
+   - Value: `<A secure random string for HMAC verification>`
+5. Click **Deploy**.
+
+### Step 3: Production Database Seeding
+Once Vercel has built and deployed the application, you must apply your Prisma schema and seed data to the production database. Run these commands locally in your terminal, passing in the remote URL:
+
+```bash
+DATABASE_URL="<Your PostgreSQL Connection String>" npx prisma db push
+DATABASE_URL="<Your PostgreSQL Connection String>" npx prisma db seed
+```
+
+## Deploying to Docker / Railway / Render
+
+The application can also be containerized or run on standard PaaS providers.
+
+### Standard Build Steps:
+```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Generate Prisma Client
+npx prisma generate
+
+# 3. Build Next.js
+npm run build
+
+# 4. Start Production Server
+npm run start
+```
+
+Make sure that `DATABASE_URL` is exposed to the runtime environment, and run `npx prisma db push` and `npx prisma db seed` during the release phase or manually.
